@@ -1,4 +1,37 @@
-
+ html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>霓虹戰紀：百子大對決</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #020617;
+            font-family: 'PingFang TC', 'Microsoft JhengHei', sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+        #game-container {
+            position: relative;
+            box-shadow: 0 0 100px rgba(139, 92, 246, 0.4);
+            border: 4px solid #1e293b;
+            border-radius: 24px;
+            overflow: hidden;
+            background: #000;
+        }
+        canvas {
+            display: block;
+        }
+        .overlay-screen {
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(circle at center, rgba(15, 23, 42, 0.95), #020617);
+            display: flex;
             flex-direction: column;
             justify-content: center;
             align-items: center;
@@ -63,6 +96,7 @@
     <div id="overlay" class="overlay-screen">
         <div id="step-count" class="flex flex-col items-center">
             <h1 class="text-4xl font-bold mb-8 text-pink-400">霓虹戰紀：百子大對決</h1>
+            <p class="text-slate-400 mb-4">現在你可以「踩掉」敵人的頭來消滅他們！</p>
             <div class="flex gap-4 mb-10">
                 <button class="count-btn" onclick="choosePlayerCount(1)">1人</button>
                 <button class="count-btn active" onclick="choosePlayerCount(2)">2人</button>
@@ -73,13 +107,15 @@
         </div>
 
         <div id="step-rules" class="hidden flex flex-col items-center max-w-xl">
-            <h2 class="text-2xl font-bold mb-4 text-violet-400">挑戰內容</h2>
+            <h2 class="text-2xl font-bold mb-4 text-violet-400">戰鬥技巧</h2>
             <div class="bg-white/5 p-6 rounded-2xl border border-white/10 w-full mb-6 space-y-4">
-                <p>🟢 <b>第一關：初試身手</b> - 簡單的平台，有少量巡邏機器人。</p>
-                <p>🟡 <b>第二關：星星跳躍</b> - 平台變小，機器人增多，利用星星獲得無敵！</p>
-                <p>🔴 <b>第三關：百子大陣</b> - <span class="text-red-400 font-bold">極限挑戰！</span> 密密麻麻的機器人封鎖去路。</p>
+                <p>⚔️ <b>消滅敵人：</b> 從上方踩踏紅色機器人的頭部可以將其摧毀。</p>
+                <p>✨ <b>隱藏彩蛋：</b> 每一關的角落都藏著特殊方塊！</p>
+                <p>💠 <b>Lv1 加速：</b> 永久提升跑速。</p>
+                <p>🔼 <b>Lv2 高跳：</b> 強化你的二連跳高度。</p>
+                <p>🛡️ <b>Lv3 神盾：</b> 長時間無敵保護。</p>
                 <hr class="opacity-20">
-                <p class="text-sm">操作：P1(WASD), P2(方向鍵), P3(IJKL), P4(小鍵盤8456)。每人都有<b>二連跳</b>！</p>
+                <p class="text-sm">操作：P1(WASD), P2(方向鍵), P3(IJKL), P4(小鍵盤8456)</p>
             </div>
             <button class="btn" onclick="goToStep('step-hero')">進入選角</button>
         </div>
@@ -136,18 +172,50 @@ class Enemy {
         this.range = range;
         this.vx = speed;
         this.color = '#ff4444';
+        this.active = true;
     }
     update() {
+        if (!this.active) return;
         this.x += this.vx;
         if (this.x > this.startX + this.range || this.x < this.startX - this.range) this.vx *= -1;
     }
     draw(ctx, ox, oy, camX, sc) {
+        if (!this.active) return;
         ctx.fillStyle = this.color;
         ctx.shadowBlur = 10; ctx.shadowColor = 'red';
         ctx.fillRect(ox + (this.x - camX), oy + this.y * sc, this.w, this.h * sc);
         ctx.fillStyle = 'white';
         ctx.fillRect(ox + (this.x - camX) + (this.vx > 0 ? 18:5), oy + this.y * sc + 8, 8, 8);
         ctx.shadowBlur = 0;
+    }
+}
+
+class EasterEgg {
+    constructor(x, y, type) {
+        this.x = x; this.y = y; this.w = 40; this.h = 40;
+        this.type = type; // 'speed', 'jump', 'shield'
+        this.active = true;
+        this.floatY = 0;
+    }
+    update() {
+        this.floatY = Math.sin(Date.now() / 200) * 10;
+    }
+    draw(ctx, ox, oy, camX, sc) {
+        if (!this.active) return;
+        ctx.save();
+        ctx.shadowBlur = 20;
+        ctx.shadowColor = this.type === 'speed' ? '#60a5fa' : (this.type === 'jump' ? '#4ade80' : '#fbbf24');
+        ctx.fillStyle = ctx.shadowColor;
+        const dx = ox + (this.x - camX);
+        const dy = oy + (this.y + this.floatY) * sc;
+        ctx.fillRect(dx, dy, this.w, this.h * sc);
+        
+        ctx.fillStyle = 'white';
+        ctx.font = 'bold 20px Arial';
+        ctx.textAlign = 'center';
+        let icon = this.type === 'speed' ? '⚡' : (this.type === 'jump' ? '↑' : '🛡️');
+        ctx.fillText(icon, dx + this.w/2, dy + this.h/2 + 7);
+        ctx.restore();
     }
 }
 
@@ -181,7 +249,7 @@ class PowerStar {
 
 class Player {
     constructor(id, hIdx) {
-        this.id = id; this.config = heroConfigs[hIdx];
+        this.id = id; this.config = { ...heroConfigs[hIdx] };
         this.w = 36; this.h = 36;
         this.jumpCount = 0;
         this.canJumpInput = true;
@@ -193,7 +261,7 @@ class Player {
         this.grounded = false;
         this.jumpCount = 0;
     }
-    update(input, lvl, stars, enemies) {
+    update(input, lvl, stars, enemies, eggs) {
         if (this.invinc > 0) this.invinc--;
         if (input.left) this.vx -= this.config.speed;
         if (input.right) this.vx += this.config.speed;
@@ -225,26 +293,43 @@ class Player {
                 s.active = false; this.invinc = 300;
             }
         });
+
+        eggs.forEach(e => {
+            if (e.active && this.x < e.x+e.w && this.x+this.w > e.x && this.y < e.y+e.h && this.y+this.h > e.y) {
+                e.active = false;
+                if (e.type === 'speed') this.config.speed += 0.3;
+                if (e.type === 'jump') this.config.jump -= 2.5;
+                if (e.type === 'shield') this.invinc = 1000;
+            }
+        });
         
-        if (this.invinc <= 0) {
-            enemies.forEach(e => {
-                if (this.x < e.x+e.w && this.x+this.w > e.x && this.y < e.y+e.h && this.y+this.h > e.y) this.die();
-            });
-        }
+        // 敵人碰撞偵測 (包含踩踏)
+        enemies.forEach(e => {
+            if (!e.active) return;
+            if (this.x < e.x+e.w && this.x+this.w > e.x && this.y < e.y+e.h && this.y+this.h > e.y) {
+                // 判斷是否為「踩」：玩家正在下墜，且腳底位置高於敵人中心
+                if (this.vy > 0 && this.y + this.h < e.y + e.h / 2 + 10) {
+                    e.active = false; // 敵人死亡
+                    this.vy = -8;     // 踩踏後的彈跳
+                    this.jumpCount = 1; // 重置為一段跳狀態，讓玩家還能再跳一次
+                } else if (this.invinc <= 0) {
+                    this.die();
+                }
+            }
+        });
 
         if (this.y > 600) this.die();
         this.camX += (Math.max(0, this.x - 300) - this.camX) * 0.1;
     }
     die() { this.x = 50; this.y = 150; this.vx = 0; this.vy = 0; this.jumpCount = 0; }
     
-    // 繪製方法：傳入背景偏移 ox/oy，目前的攝影機位置 camX，以及縮放比例 sc
     draw(ctx, ox, oy, camX, sc, isGhost = false) {
         const dx = ox + (this.x - camX);
         const dy = oy + this.y * sc;
         
         ctx.save();
         if (isGhost) {
-            ctx.globalAlpha = 0.5; // 調高影子能見度
+            ctx.globalAlpha = 0.5;
             ctx.strokeStyle = 'white';
             ctx.lineWidth = 2;
             ctx.strokeRect(dx, dy, this.w, this.h * sc);
@@ -304,16 +389,18 @@ function startGame() {
     
     for(let l=0; l<3; l++) {
         let plats = [{x: 0, y: 250, w: 450, h: 40}];
-        let enemies = [], stars = [];
+        let enemies = [], stars = [], eggs = [];
         let mapLen = 4000;
         
         if (l === 0) {
+            eggs.push(new EasterEgg(200, 50, 'speed')); 
             for(let i=0; i<12; i++) {
                 let px = 600 + i*300, py = 150 + Math.random()*100;
                 plats.push({x: px, y: py, w: 250, h: 20});
                 if(i > 2) enemies.push(new Enemy(px + 50, py - 35, 80, 1.5));
             }
         } else if (l === 1) {
+            eggs.push(new EasterEgg(1500, 30, 'jump')); 
             for(let i=0; i<15; i++) {
                 let px = 500 + i*260, py = 100 + Math.random()*150;
                 plats.push({x: px, y: py, w: 140, h: 20});
@@ -321,6 +408,7 @@ function startGame() {
                 if(i % 4 === 0) stars.push(new PowerStar(px + 50, py - 50));
             }
         } else {
+            eggs.push(new EasterEgg(3000, 150, 'shield')); 
             for(let i=0; i<30; i++) {
                 let px = 500 + i*140, py = 120 + (i%3)*60;
                 plats.push({x: px, y: py, w: 110, h: 20});
@@ -330,7 +418,7 @@ function startGame() {
         }
         
         plats.push({x: mapLen - 450, y: 250, w: 450, h: 40});
-        maps.push({ platforms: plats, enemies, stars, finishX: mapLen - 250 });
+        maps.push({ platforms: plats, enemies, stars, eggs, finishX: mapLen - 250 });
     }
     gameRunning = true;
     requestAnimationFrame(update);
@@ -342,9 +430,10 @@ function update() {
         let k = Object.values(keys)[i];
         let input = { left: k.active[k.left], right: k.active[k.right], up: k.active[k.up] };
         let m = maps[p.levelIdx];
-        p.update(input, m, m.stars, m.enemies);
+        p.update(input, m, m.stars, m.enemies, m.eggs);
         m.stars.forEach(s => s.update(m.platforms));
         m.enemies.forEach(e => e.update());
+        m.eggs.forEach(e => e.update());
         if (p.x > m.finishX) {
             if (p.levelIdx < 2) { p.levelIdx++; p.die(); }
             else { winner = p.id; endGame(); }
@@ -368,13 +457,11 @@ function draw() {
         ctx.save();
         ctx.beginPath(); ctx.rect(ox, oy, vw, vh); ctx.clip();
         
-        // 背景色
         ctx.fillStyle = '#020617'; ctx.fillRect(ox, oy, vw, vh);
         
         let m = maps[p.levelIdx];
         let sc = vh / 300;
         
-        // 繪製地圖平台
         ctx.fillStyle = '#1e293b'; ctx.strokeStyle = p.config.color;
         m.platforms.forEach(plat => {
             let px = ox + (plat.x - p.camX), py = oy + plat.y * sc;
@@ -383,30 +470,26 @@ function draw() {
             ctx.strokeRect(px, py, plat.w, plat.h * sc);
         });
 
-        // 繪製終點提示
         ctx.fillStyle = 'rgba(236, 72, 153, 0.4)';
         ctx.fillRect(ox + (m.finishX - p.camX), oy, 20, vh);
 
-        // 繪製所有在同關卡的玩家影子
+        m.eggs.forEach(e => e.draw(ctx, ox, oy, p.camX, sc));
+
         players.forEach(other => {
             if (other.levelIdx === p.levelIdx) {
-                // 如果是自己，畫正常的；如果是別人，畫 Ghost 版
                 other.draw(ctx, ox, oy, p.camX, sc, other.id !== p.id);
             }
         });
 
-        // 繪製物件與敵人
         m.stars.forEach(s => s.draw(ctx, ox, oy, p.camX, sc));
         m.enemies.forEach(e => e.draw(ctx, ox, oy, p.camX, sc));
         
-        // UI 標籤
         ctx.fillStyle = 'white'; ctx.font = 'bold 18px Arial';
         ctx.shadowBlur = 4; ctx.shadowColor = 'black';
         ctx.fillText(`P${p.id} ${p.config.name} | 關卡 ${p.levelIdx+1}/3`, ox+20, oy+35);
         ctx.shadowBlur = 0;
         
         ctx.restore();
-        // 分割邊框
         ctx.strokeStyle = '#334155'; ctx.lineWidth = 4;
         ctx.strokeRect(ox, oy, vw, vh);
     });
@@ -428,4 +511,5 @@ window.addEventListener('keyup', e => {
 });
 </script>
 </body>
-</html>
+</html>         
+ 
